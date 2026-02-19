@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解約チェック項目・「オ」版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f0f4f8; overflow-x: hidden; }
+
+        .check-item { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .check-item.done {
+            background-color: #cbd5e1;
+            opacity: 0.6;
+            transform: scale(0.96);
+        }
+
+        #ojisan {
+            position: fixed;
+            bottom: -320px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            z-index: 200;
+            transition: bottom 1.2s cubic-bezier(0.175, 0.885, 0.32, 1);
+        }
+        #ojisan.show { bottom: -20px; }
+
+        #fukidashi {
+            position: absolute;
+            top: -70px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: white;
+            border: 3px solid #1e293b;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 900;
+            white-space: nowrap;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: transform 0.4s 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.5);
+        }
+        #ojisan.show #fukidashi { transform: translateX(-50%) scale(1); }
+
+        #white-out {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; opacity: 0; pointer-events: none; z-index: 150;
+            transition: opacity 0.8s;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex justify-center items-start min-h-screen">
+
+    <div id="white-out"></div>
+
+    <div id="ojisan">
+        <div id="fukidashi" class="text-indigo-600 text-2xl tracking-tighter">やるねぇ↗</div>
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40 100 Q40 40 100 40 Q160 40 160 100 Q160 180 100 180 Q40 180 40 100" fill="#ffdbac"/>
+            <path d="M42 90 Q45 70 60 60 M158 90 Q155 70 140 60" stroke="#333" stroke-width="4" fill="none"/>
+            <ellipse cx="75" cy="110" rx="10" ry="3" fill="#333"/>
+            <ellipse cx="125" cy="110" rx="10" ry="3" fill="#333"/>
+            <path d="M65 95 Q75 90 85 95 M115 95 Q125 90 135 95" stroke="#333" stroke-width="2" fill="none"/>
+            <path d="M95 120 Q100 135 105 120" stroke="#cc9980" stroke-width="2" fill="none"/>
+            <path d="M85 150 Q100 160 115 150" stroke="#333" stroke-width="2" fill="none"/>
+            <path d="M20 180 Q100 160 180 180 L180 200 L20 200 Z" fill="#1e3a8a"/>
+            <path d="M100 160 L80 200 L120 200 Z" fill="#fff"/>
+            <path d="M95 175 L100 185 L105 175 Z" fill="#dc2626"/>
+        </svg>
+    </div>
+
+    <div class="w-full max-w-lg z-10">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-black text-slate-800 mb-2 italic tracking-tighter uppercase">解約チェック項目</h1>
+            <div class="text-xl font-bold text-indigo-500 bg-white inline-block px-4 py-1 rounded-full shadow-sm">
+                <span id="current-count">0</span> / 9
+            </div>
+        </header>
+
+        <div id="list-container" class="space-y-4 mb-12"></div>
+
+        <div id="finish-area" class="invisible opacity-0 transition-opacity duration-700 text-center">
+            <button onclick="startIkeboFinish()" class="bg-indigo-600 text-white text-3xl font-black py-10 px-14 rounded-[3rem] shadow-2xl active:scale-95 transition-all">
+                チェック完了
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const steps = [
+            "他社切替ではなく廃止か？",
+            "廃止理由",
+            "解約住所の確認",
+            "最終利用日の確認（翌日止まること説明）",
+            "建物解体の有無",
+            "請求書送付先住所の確認",
+            "違約金の説明",
+            "最終請求１～２か月後の案内",
+            "支払方法（コンビニ請求書になる可能性）"
+        ];
+
+        function initList() {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            steps.forEach(text => {
+                const div = document.createElement('div');
+                div.className = "check-item bg-white p-6 rounded-2xl shadow-sm flex items-center cursor-pointer border-2 border-slate-100";
+                div.innerHTML = `<div class="w-8 h-8 rounded-full border-2 border-slate-200 flex items-center justify-center mr-4 text-transparent font-black bg-slate-50">✓</div><span class="text-lg font-bold text-slate-700">${text}</span>`;
+                
+                div.onclick = function() {
+                    if(!this.classList.contains('done')) {
+                        this.classList.add('done');
+                        const icon = this.querySelector('div');
+                        icon.classList.replace('text-transparent', 'text-indigo-500');
+                        
+                        // 🎙️ チェックごとに「オ」と発生
+                        speakStep();
+                        burstConfetti(this);
+                    } else {
+                        this.classList.remove('done');
+                        const icon = this.querySelector('div');
+                        icon.classList.replace('text-indigo-500', 'text-transparent');
+                    }
+                    checkAllDone();
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function burstConfetti(el) {
+            const rect = el.getBoundingClientRect();
+            confetti({
+                particleCount: 30, spread: 70, origin: { x: (rect.left + rect.width / 2) / window.innerWidth, y: (rect.top + rect.height / 2) / window.innerHeight },
+                colors: ['#6366f1', '#a5b4fc', '#fbbf24']
+            });
+        }
+
+        // 🎙️ チェック時の「オ」
+        function speakStep() {
+            const uttr = new SpeechSynthesisUtterance("オ");
+            const voices = speechSynthesis.getVoices();
+            uttr.voice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Google') || v.name.includes('Ichiro'))) || voices[0];
+            uttr.pitch = 0.6; // 低めのイケボ
+            uttr.rate = 1.0;
+            speechSynthesis.speak(uttr);
+        }
+
+        // 🎙️ 完了時の「やるねぇ」
+        function speakIkebo() {
+            const uttr = new SpeechSynthesisUtterance("やるねぇ");
+            const voices = speechSynthesis.getVoices();
+            uttr.voice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Google') || v.name.includes('Ichiro'))) || voices[0];
+            uttr.pitch = 0.7;
+            uttr.rate = 0.8;
+            speechSynthesis.speak(uttr);
+        }
+
+        function checkAllDone() {
+            const doneCount = document.querySelectorAll('.done').length;
+            document.getElementById('current-count').innerText = doneCount;
+            if (doneCount === 9) {
+                const area = document.getElementById('finish-area');
+                area.classList.remove('invisible', 'opacity-0');
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+        }
+
+        function startIkeboFinish() {
+            const ojisan = document.getElementById('ojisan');
+            const whiteOut = document.getElementById('white-out');
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+            ojisan.classList.add('show');
+            setTimeout(() => { speakIkebo(); }, 1200);
+            setTimeout(() => { whiteOut.style.opacity = "1"; }, 3500);
+            setTimeout(() => { location.reload(); }, 4500);
+        }
+
+        speechSynthesis.getVoices();
+        initList();
+    </script>
+</body>
+</html>
